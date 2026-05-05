@@ -1,0 +1,40 @@
+.register-wrapper {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.register-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  padding: 40px 36px;
+  position: relative;
+  z-index: 1;
+  animation: fadeUp 0.5s ease;
+}
+
+.bottom-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bottom-link a {
+  color: var(--primary-btn);
+  font-weight: 600;
+  text-decoration: none;
+}
+textarea.form-input {
+  resize: none;
+  min-height: 80px;
+}
