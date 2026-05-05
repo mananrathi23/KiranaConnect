@@ -232,6 +232,19 @@
   text-decoration: underline;
 }
 
+.bottom-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.bottom-link a {
+  color: var(--primary-btn);
+  font-weight: 600;
+  text-decoration: none;
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;

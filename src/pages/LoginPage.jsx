@@ -132,6 +132,9 @@ export default function LoginPage() {
             Fill demo credentials
           </button>
         </div>
+        <div className="bottom-link">
+        Don’t have an account? <Link to="/register">Create account</Link>
+        </div>
       </div>
     </div>
   );
