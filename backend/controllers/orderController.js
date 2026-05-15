@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import { getPriceForQty } from '../utils/pricingHelper.js';
+import { sendOrderConfirmation } from '../utils/emailService.js';
 
 // POST /api/orders — SHOP_OWNER places order with atomic stock decrement
 export const placeOrder = async (req, res) => {
@@ -45,6 +46,7 @@ export const placeOrder = async (req, res) => {
         product: product._id,
         quantity: item.quantity,
         priceAtPurchase: getPriceForQty(product.priceTiers, item.quantity),
+        productName: product.name, // Temporary for email
       });
     }
 
@@ -54,15 +56,28 @@ export const placeOrder = async (req, res) => {
       const totalAmount = orderItems.reduce(
         (sum, i) => sum + i.priceAtPurchase * i.quantity, 0
       );
+      
+      const itemsForDb = orderItems.map(i => ({
+        product: i.product,
+        quantity: i.quantity,
+        priceAtPurchase: i.priceAtPurchase
+      }));
+
       const [order] = await Order.create(
-        [{ shopOwner: req.user.id, wholesaler: wholesalerId, items: orderItems, totalAmount }],
+        [{ shopOwner: req.user.id, wholesaler: wholesalerId, items: itemsForDb, totalAmount }],
         { session }
       );
-      createdOrders.push(order);
+      createdOrders.push({ order, emailItemsList: orderItems });
     }
 
     await session.commitTransaction();
-    res.status(201).json(createdOrders);
+    
+    // Send emails asynchronously after transaction commits
+    createdOrders.forEach(({ order, emailItemsList }) => {
+      sendOrderConfirmation(req.user.email, order, emailItemsList);
+    });
+
+    res.status(201).json(createdOrders.map(c => c.order));
   } catch (err) {
     await session.abortTransaction();
     res.status(500).json({ message: err.message });

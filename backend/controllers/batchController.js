@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Batch from '../models/Batch.js';
 import Order from '../models/Order.js';
+import { sendBatchDispatchNotification } from '../utils/emailService.js';
 
 // GET /api/batches — WHOLESALER: all their batches
 export const getBatches = async (req, res) => {
@@ -70,13 +71,28 @@ export const dispatchBatch = async (req, res) => {
       { _id: req.params.id, wholesaler: req.user.id, status: 'CREATED' },
       { $set: { status: 'DISPATCHED' } },
       { new: true }
-    );
+    ).populate({
+      path: 'orders',
+      populate: { path: 'shopOwner', select: 'name email' }
+    });
     if (!batch) return res.status(404).json({ message: 'Batch not found or already dispatched' });
 
     await Order.updateMany(
       { batchId: batch._id },
       { $set: { status: 'DISPATCHED' } }
     );
+
+    // Send dispatch emails asynchronously
+    const shopOwners = new Map();
+    batch.orders.forEach(order => {
+      if (order.shopOwner && order.shopOwner.email) {
+        shopOwners.set(order.shopOwner._id.toString(), order.shopOwner);
+      }
+    });
+
+    shopOwners.forEach((owner) => {
+      sendBatchDispatchNotification(owner.email, owner.name, batch);
+    });
 
     res.json(batch);
   } catch (err) {
