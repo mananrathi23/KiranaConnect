@@ -33,6 +33,25 @@ export default function OrderHistory() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
   const [expanded, setExpanded] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownload = async (orderId) => {
+    try {
+      setDownloading(orderId);
+      const blob = await ordersApi.downloadInvoice(orderId);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Invoice_${orderId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      alert('Failed to download invoice: ' + err.message);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true); setError('');
@@ -127,6 +146,15 @@ export default function OrderHistory() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                  <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                      className="btn btn-outline btn-sm" 
+                      onClick={(e) => { e.stopPropagation(); handleDownload(order._id); }}
+                      disabled={downloading === order._id}
+                    >
+                      {downloading === order._id ? '⏳ Downloading...' : '📄 Download PDF Invoice'}
+                    </button>
                   </div>
                 </div>
               )}

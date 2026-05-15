@@ -3,6 +3,7 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import { getPriceForQty } from '../utils/pricingHelper.js';
 import { sendOrderConfirmation } from '../utils/emailService.js';
+import { generateInvoiceBuffer } from '../utils/invoiceGenerator.js';
 
 // POST /api/orders — SHOP_OWNER places order with atomic stock decrement
 export const placeOrder = async (req, res) => {
@@ -231,6 +232,38 @@ export const updateOrderStatus = async (req, res) => {
     );
     if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// GET /api/orders/:id/invoice
+export const downloadInvoice = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('shopOwner', 'name shopName')
+      .populate('wholesaler', 'name businessName')
+      .populate('items.product', 'name category');
+      
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Auth: must be the shop owner or wholesaler
+    const uid = req.user.id;
+    if (order.shopOwner._id.toString() !== uid && order.wholesaler._id.toString() !== uid) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const emailItemsList = order.items.map(item => ({
+      productName: item.product.name,
+      quantity: item.quantity,
+      priceAtPurchase: item.priceAtPurchase
+    }));
+
+    const pdfBuffer = await generateInvoiceBuffer(order, order.shopOwner.name, emailItemsList);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Invoice_${order._id}.pdf`);
+    res.send(pdfBuffer);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

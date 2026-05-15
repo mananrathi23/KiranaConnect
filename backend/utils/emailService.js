@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { generateInvoiceBuffer } from './invoiceGenerator.js';
 
 // Configure the transporter
 const transporter = nodemailer.createTransport({
@@ -17,11 +18,24 @@ export const sendOrderConfirmation = async (userEmail, orderDetails, emailItemsL
 
   const itemsList = emailItemsList.map(item => `- ${item.productName} (x${item.quantity}) - ₹${item.priceAtPurchase * item.quantity}`).join('\n');
 
+  let attachments = [];
+  try {
+    const pdfBuffer = await generateInvoiceBuffer(orderDetails, 'Shop Owner', emailItemsList);
+    attachments.push({
+      filename: `Invoice_${orderDetails._id}.pdf`,
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    });
+  } catch (err) {
+    console.error('Failed to generate PDF for email:', err);
+  }
+
   const mailOptions = {
     from: `"KiranaConnect" <${process.env.EMAIL_USER}>`,
     to: userEmail,
     subject: `Order Confirmation - KiranaConnect (#${orderDetails._id})`,
-    text: `Hello,\n\nThank you for your order! Your order has been placed successfully and will be processed in the next batch.\n\nOrder Details:\n${itemsList}\n\nTotal Amount: ₹${orderDetails.totalAmount}\n\nBest regards,\nThe KiranaConnect Team`
+    text: `Hello,\n\nThank you for your order! Your order has been placed successfully and will be processed in the next batch.\n\nOrder Details:\n${itemsList}\n\nTotal Amount: ₹${orderDetails.totalAmount}\n\nPlease find your invoice attached.\n\nBest regards,\nThe KiranaConnect Team`,
+    attachments
   };
 
   try {
