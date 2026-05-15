@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext';
 import Sidebar  from './components/Sidebar';
 import Navbar   from './components/Navbar';
+import { ToastContainer } from 'react-toastify';
+import NotificationManager from './components/NotificationManager';
 
 import SplashPage    from './pages/SplashPage';
 import LoginPage     from './pages/LoginPage';
@@ -65,6 +67,8 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <NotificationManager />
+      <ToastContainer position="top-right" autoClose={5000} />
       <Routes>
         {/* Public */}
         <Route path="/" element={<SplashPage />} />

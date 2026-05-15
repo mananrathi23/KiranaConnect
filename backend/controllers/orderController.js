@@ -4,6 +4,7 @@ import Product from '../models/Product.js';
 import { getPriceForQty } from '../utils/pricingHelper.js';
 import { sendOrderConfirmation } from '../utils/emailService.js';
 import { generateInvoiceBuffer } from '../utils/invoiceGenerator.js';
+import { getIo, getUserSocketId } from '../utils/socket.js';
 
 // POST /api/orders — SHOP_OWNER places order with atomic stock decrement
 export const placeOrder = async (req, res) => {
@@ -76,6 +77,15 @@ export const placeOrder = async (req, res) => {
     // Send emails asynchronously after transaction commits
     createdOrders.forEach(({ order, emailItemsList }) => {
       sendOrderConfirmation(req.user.email, order, emailItemsList);
+      
+      // Emit socket event to the wholesaler
+      const wholesalerSocketId = getUserSocketId(order.wholesaler);
+      if (wholesalerSocketId) {
+        getIo().to(wholesalerSocketId).emit('new_order', {
+          message: `New order #${order._id.toString().slice(-6)} received!`,
+          orderId: order._id
+        });
+      }
     });
 
     res.status(201).json(createdOrders.map(c => c.order));
@@ -231,6 +241,17 @@ export const updateOrderStatus = async (req, res) => {
       { new: true }
     );
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Emit socket event to the shop owner
+    const shopOwnerSocketId = getUserSocketId(order.shopOwner);
+    if (shopOwnerSocketId) {
+      getIo().to(shopOwnerSocketId).emit('order_status_update', {
+        message: `Your order #${order._id.toString().slice(-6)} is now ${status}`,
+        orderId: order._id,
+        status: status
+      });
+    }
+
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: err.message });

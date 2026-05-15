@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Batch from '../models/Batch.js';
 import Order from '../models/Order.js';
 import { sendBatchDispatchNotification } from '../utils/emailService.js';
+import { getIo, getUserSocketId } from '../utils/socket.js';
 
 // GET /api/batches — WHOLESALER: all their batches
 export const getBatches = async (req, res) => {
@@ -92,6 +93,15 @@ export const dispatchBatch = async (req, res) => {
 
     shopOwners.forEach((owner) => {
       sendBatchDispatchNotification(owner.email, owner.name, batch);
+      
+      // Emit socket event to the shop owner
+      const socketId = getUserSocketId(owner._id);
+      if (socketId) {
+        getIo().to(socketId).emit('batch_dispatched', {
+          message: `Your orders in batch #${batch._id.toString().slice(-6)} have been dispatched!`,
+          batchId: batch._id
+        });
+      }
     });
 
     res.json(batch);
